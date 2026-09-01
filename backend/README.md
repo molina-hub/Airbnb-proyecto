@@ -37,6 +37,19 @@ uvicorn src.app:app --reload
 
 Abrir http://localhost:8000/docs para ver Swagger.
 
+## API Airbnb
+
+Las rutas se publican bajo `/api`. Además del CRUD de usuarios y propiedades,
+Swagger documenta las historias HU2--HU12: búsqueda (`GET /propiedades`),
+reservas, cambios de estado, reseñas, favoritos, amenidades, disponibilidad,
+ingresos, ranking y reservas de un huésped. Las operaciones que requieren
+identificar al actor reciben explícitamente `anfitrion_id` o `autor_id` hasta
+que se incorpore autenticación de sesión.
+
+Para crear la base y cargar los datos de prueba, ejecutar el script
+`src/db/tables.sql` en PostgreSQL. Contiene como mínimo cinco filas para cada
+tabla solicitada.
+
 ---
 
 ## Estructura de carpetas

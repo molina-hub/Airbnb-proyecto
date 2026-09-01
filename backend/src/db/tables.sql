@@ -87,16 +87,19 @@ INSERT INTO amenidades (nombre) VALUES
 
 INSERT INTO reservas
 (propiedad_id, huesped_id, fecha_inicio, fecha_fin, estado, total) VALUES
-(1, 3, '2026-09-10', '2026-09-15', 'confirmada', 400000),
-(2, 4, '2026-09-20', '2026-09-23', 'pendiente', 165000),
-(3, 3, '2026-10-01', '2026-10-05', 'confirmada', 380000),
-(4, 4, '2026-11-10', '2026-11-14', 'rechazada', 440000),
-(5, 3, '2026-12-01', '2026-12-04', 'cancelada', 180000);
+(1, 3, '2026-07-10', '2026-07-15', 'confirmada', 400000),
+(1, 4, '2026-07-20', '2026-07-23', 'confirmada', 240000),
+(1, 3, '2026-08-01', '2026-08-05', 'confirmada', 320000),
+(2, 4, '2026-08-10', '2026-08-14', 'confirmada', 220000),
+(3, 3, '2026-08-20', '2026-08-24', 'confirmada', 380000);
 
 INSERT INTO resenas
 (reserva_id, autor_id, puntaje, comentario, fecha) VALUES
-(1, 3, 5, 'Excelente propiedad.', '2026-09-16'),
-(3, 3, 4, 'Muy buena estadia.', '2026-10-06');
+(1, 3, 5, 'Excelente propiedad.', '2026-07-16'),
+(2, 4, 4, 'Muy cómoda y bien ubicada.', '2026-07-24'),
+(3, 3, 5, 'Volveríamos sin dudarlo.', '2026-08-06'),
+(4, 4, 4, 'Departamento impecable.', '2026-08-15'),
+(5, 3, 5, 'Hermosa vista al mar.', '2026-08-25');
 
 INSERT INTO propiedad_amenidades (propiedad_id, amenidad_id) VALUES
 (1, 1),

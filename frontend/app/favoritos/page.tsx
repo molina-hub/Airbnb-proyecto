@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { api, errorMessage } from "../../lib/api";
 
 type Propiedad = {
   id: number;
@@ -54,7 +55,7 @@ const propiedadesIniciales: Propiedad[] = [
 const favoritosIniciales = [1, 3];
 
 const usuarioActual = {
-  id: 20,
+  id: 3,
   nombre: "Juan",
 };
 
@@ -71,7 +72,7 @@ export default function FavoritosPage() {
       favoritos.includes(propiedad.id)
     );
 
-  function agregarFavorito(propiedadId: number) {
+  async function agregarFavorito(propiedadId: number) {
     setMensaje("");
     setError("");
 
@@ -82,17 +83,16 @@ export default function FavoritosPage() {
       return;
     }
 
-    setFavoritos((favoritosActuales) => [
-      ...favoritosActuales,
-      propiedadId,
-    ]);
-
-    setMensaje(
-      "La propiedad fue agregada a favoritos."
-    );
+    try {
+      await api(`/usuarios/${usuarioActual.id}/favoritos/${propiedadId}`, { method: "POST" });
+      setFavoritos((actuales) => [...actuales, propiedadId]);
+      setMensaje("La propiedad fue agregada a favoritos.");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
-  function quitarFavorito(propiedadId: number) {
+  async function quitarFavorito(propiedadId: number) {
     setMensaje("");
     setError("");
 
@@ -103,15 +103,13 @@ export default function FavoritosPage() {
       return;
     }
 
-    setFavoritos((favoritosActuales) =>
-      favoritosActuales.filter(
-        (id) => id !== propiedadId
-      )
-    );
-
-    setMensaje(
-      "La propiedad fue quitada de favoritos."
-    );
+    try {
+      await api(`/usuarios/${usuarioActual.id}/favoritos/${propiedadId}`, { method: "DELETE" });
+      setFavoritos((actuales) => actuales.filter((id) => id !== propiedadId));
+      setMensaje("La propiedad fue quitada de favoritos.");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
   return (

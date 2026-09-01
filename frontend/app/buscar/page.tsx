@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
 
 type Propiedad = {
   id: number;
@@ -16,56 +17,6 @@ type Propiedad = {
   }[];
 };
 
-const propiedadesIniciales: Propiedad[] = [
-  {
-    id: 1,
-    titulo: "Departamento moderno",
-    direccion: "Av. Corrientes 1234",
-    ciudad: "Buenos Aires",
-    precio_noche: 50000,
-    capacidad: 4,
-    reservas: [
-      {
-        fecha_inicio: "2026-09-10",
-        fecha_fin: "2026-09-15",
-        estado: "confirmada",
-      },
-    ],
-  },
-  {
-    id: 2,
-    titulo: "Casa familiar",
-    direccion: "Calle San Martín 850",
-    ciudad: "Buenos Aires",
-    precio_noche: 75000,
-    capacidad: 6,
-    reservas: [
-      {
-        fecha_inicio: "2026-09-20",
-        fecha_fin: "2026-09-25",
-        estado: "confirmada",
-      },
-    ],
-  },
-  {
-    id: 3,
-    titulo: "Casa con pileta",
-    direccion: "Av. Colón 450",
-    ciudad: "Córdoba",
-    precio_noche: 60000,
-    capacidad: 5,
-    reservas: [],
-  },
-  {
-    id: 4,
-    titulo: "Departamento céntrico",
-    direccion: "San Lorenzo 220",
-    ciudad: "Rosario",
-    precio_noche: 45000,
-    capacidad: 3,
-    reservas: [],
-  },
-];
 
 export default function BuscarPage() {
   const [ciudad, setCiudad] = useState("");
@@ -83,19 +34,7 @@ export default function BuscarPage() {
 
   const [error, setError] = useState("");
 
-  function haySolapamiento(
-    fechaDesdeBusqueda: string,
-    fechaHastaBusqueda: string,
-    fechaInicioReserva: string,
-    fechaFinReserva: string
-  ) {
-    return (
-      fechaDesdeBusqueda < fechaFinReserva &&
-      fechaHastaBusqueda > fechaInicioReserva
-    );
-  }
-
-  function buscarPropiedades(
+  async function buscarPropiedades(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
@@ -143,47 +82,15 @@ export default function BuscarPage() {
       }
     }
 
-    const ciudadBuscada = ciudad.trim().toLowerCase();
-
-    const propiedadesDisponibles = propiedadesIniciales.filter(
-      (propiedad) => {
-        const coincideCiudad =
-          propiedad.ciudad.toLowerCase() === ciudadBuscada;
-
-        const tieneCapacidad =
-          propiedad.capacidad >= cantidadHuespedes;
-
-        const tienePrecio =
-          precioMaximo === null ||
-          propiedad.precio_noche <= precioMaximo;
-
-        const tieneReservaSolapada =
-          propiedad.reservas.some((reserva) => {
-            if (reserva.estado !== "confirmada") {
-              return false;
-            }
-
-            return haySolapamiento(
-              fechaDesde,
-              fechaHasta,
-              reserva.fecha_inicio,
-              reserva.fecha_fin
-            );
-          });
-
-        const estaDisponible = !tieneReservaSolapada;
-
-        return (
-          coincideCiudad &&
-          tieneCapacidad &&
-          tienePrecio &&
-          estaDisponible
-        );
-      }
-    );
-
-    setResultados(propiedadesDisponibles);
-    setBusquedaRealizada(true);
+    try {
+      const params = new URLSearchParams({ ciudad: ciudad.trim(), desde: fechaDesde, hasta: fechaHasta, huespedes: String(cantidadHuespedes) });
+      if (precioMaximo !== null) params.set("precio_max", String(precioMaximo));
+      const propiedades = await api<Propiedad[]>(`/propiedades?${params}`);
+      setResultados(propiedades);
+      setBusquedaRealizada(true);
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
   return (

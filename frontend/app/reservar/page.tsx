@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
 
 type Reserva = {
   id: number;
@@ -63,7 +64,7 @@ const propiedadesIniciales: Propiedad[] = [
 ];
 
 const usuarioActual = {
-  id: 20,
+  id: 3,
   nombre: "Juan",
 };
 
@@ -94,7 +95,7 @@ function haySolapamiento(
 }
 
 export default function ReservarPage() {
-  const [propiedades, setPropiedades] = useState<
+  const [propiedades] = useState<
     Propiedad[]
   >(propiedadesIniciales);
 
@@ -128,7 +129,7 @@ export default function ReservarPage() {
         cantidadNoches
       : 0;
 
-  function crearReserva(
+  async function crearReserva(
     event: FormEvent<HTMLFormElement>
   ) {
     event.preventDefault();
@@ -226,43 +227,16 @@ export default function ReservarPage() {
       return;
     }
 
-    const nuevaReserva: Reserva = {
-      id: Date.now(),
-      propiedad_id:
-        propiedadSeleccionada.id,
-      huesped_id: usuarioActual.id,
-      fecha_inicio: fechaInicio,
-      fecha_fin: fechaFin,
-      estado: "pendiente",
-      total,
-    };
-
-    setPropiedades(
-      propiedadesActuales =>
-        propiedadesActuales.map(
-          propiedad =>
-            propiedad.id ===
-            propiedadSeleccionada.id
-              ? {
-                  ...propiedad,
-                  reservas: [
-                    ...propiedad.reservas,
-                    nuevaReserva,
-                  ],
-                }
-              : propiedad
-        )
-    );
-
-    setMensaje(
-      `Reserva creada correctamente. Estado: pendiente. Total: $${total.toLocaleString(
-        "es-AR"
-      )}.`
-    );
-
-    setFechaInicio("");
-    setFechaFin("");
-    setHuespedes("1");
+    try {
+      const nuevaReserva = await api<Reserva>("/reservas", {
+        method: "POST",
+        body: JSON.stringify({ propiedad_id: propiedadSeleccionada.id, huesped_id: usuarioActual.id, fecha_inicio: fechaInicio, fecha_fin: fechaFin }),
+      });
+      setMensaje(`Reserva creada correctamente. Estado: pendiente. Total: $${Number(nuevaReserva.total).toLocaleString("es-AR")}.`);
+      setFechaInicio(""); setFechaFin(""); setHuespedes("1");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
   return (

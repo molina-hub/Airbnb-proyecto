@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
 
 type Propiedad = {
   id: number;
@@ -26,7 +27,7 @@ export default function PublicarPage() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  function publicarPropiedad(event: FormEvent<HTMLFormElement>) {
+  async function publicarPropiedad(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setMensaje("");
@@ -67,28 +68,17 @@ export default function PublicarPage() {
       return;
     }
 
-    const nuevaPropiedad: Propiedad = {
-      id: Date.now(),
-      titulo: titulo.trim(),
-      direccion: direccion.trim(),
-      ciudad: ciudad.trim(),
-      precio_noche: precio,
-      capacidad: cantidadPersonas,
-      anfitrion_id: 1,
-    };
-
-    setPropiedades((propiedadesActuales) => [
-      ...propiedadesActuales,
-      nuevaPropiedad,
-    ]);
-
-    setTitulo("");
-    setDireccion("");
-    setCiudad("");
-    setPrecioNoche("");
-    setCapacidad("");
-
-    setMensaje("La propiedad fue preparada correctamente para publicarse.");
+    try {
+      const nuevaPropiedad = await api<Propiedad>("/propiedades", {
+        method: "POST",
+        body: JSON.stringify({ titulo: titulo.trim(), direccion: direccion.trim(), ciudad: ciudad.trim(), precio_noche: precio, capacidad: cantidadPersonas, anfitrion_id: 1 }),
+      });
+      setPropiedades((actuales) => [...actuales, nuevaPropiedad]);
+      setTitulo(""); setDireccion(""); setCiudad(""); setPrecioNoche(""); setCapacidad("");
+      setMensaje("La propiedad fue publicada correctamente.");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
   return (

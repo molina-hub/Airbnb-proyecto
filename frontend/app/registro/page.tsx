@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
+import { api, errorMessage } from "../../lib/api";
 
 type Usuario = {
   id: number;
@@ -20,7 +21,7 @@ export default function RegistroPage() {
 
   const [usuario, setUsuario] = useState<Usuario | null>(null);
 
-  function registrarUsuario(event: FormEvent<HTMLFormElement>) {
+  async function registrarUsuario(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     setMensaje("");
@@ -41,17 +42,16 @@ export default function RegistroPage() {
       return;
     }
 
-    const nuevoUsuario: Usuario = {
-      id: Date.now(),
-      email: email.trim(),
-      nombre: nombre.trim(),
-      fecha_registro: new Date().toISOString(),
-      es_anfitrion: esAnfitrion,
-    };
-
-    setUsuario(nuevoUsuario);
-
-    setMensaje("Usuario preparado para registrarse correctamente.");
+    try {
+      const nuevoUsuario = await api<Usuario>("/usuarios", {
+        method: "POST",
+        body: JSON.stringify({ email: email.trim(), nombre: nombre.trim(), es_anfitrion: esAnfitrion }),
+      });
+      setUsuario(nuevoUsuario);
+      setMensaje("Usuario registrado correctamente.");
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
   return (

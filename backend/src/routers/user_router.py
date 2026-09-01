@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.db.connection import get_db
@@ -34,7 +34,10 @@ def create_user(
         **payload.model_dump()
     )
 
-    return UserService(db).create(dto)
+    try:
+        return UserService(db).create(dto)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(error))
 
 
 @router.get(
@@ -46,7 +49,10 @@ def get_user(
     db: Session = Depends(get_db)
 ):
 
-    return UserService(db).get_by_id(user_id)
+    try:
+        return UserService(db).get_by_id(user_id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
 
 @router.get(
@@ -74,10 +80,10 @@ def update_user(
         **payload.model_dump()
     )
 
-    return UserService(db).update(
-        user_id,
-        dto
-    )
+    try:
+        return UserService(db).update(user_id, dto)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(error))
 
 
 @router.delete(
@@ -89,6 +95,9 @@ def delete_user(
     db: Session = Depends(get_db)
 ):
 
-    UserService(db).delete(user_id)
+    try:
+        UserService(db).delete(user_id)
+    except ValueError as error:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(error))
 
     return None

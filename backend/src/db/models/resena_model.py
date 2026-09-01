@@ -1,4 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from src.db.connection import Base
@@ -13,3 +14,6 @@ class Resena(Base):
     puntaje = Column(Integer, nullable=False)
     comentario = Column(Text)
     fecha = Column(DateTime, server_default=func.now(), nullable=False)
+
+    reserva = relationship("Reserva", back_populates="resena")
+    autor = relationship("Usuario", back_populates="resenas")

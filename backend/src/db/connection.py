@@ -3,7 +3,13 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from src.config.env import settings
 
-engine = create_engine(settings.DATABASE_URL)
+# psycopg 3 es el driver soportado por las versiones recientes de Python.
+# Conserva compatibilidad con el formato PostgreSQL habitual del archivo .env.
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+engine = create_engine(database_url)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 Base = declarative_base()
 

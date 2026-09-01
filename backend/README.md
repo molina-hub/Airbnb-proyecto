@@ -80,7 +80,7 @@ src/
 
 El módulo de **users** tiene un endpoint completo (`POST /users`) con todas las capas implementadas como ejemplo de la sintaxis.
 
-El resto de los métodos (`GET`, `PUT`, `DELETE`) y los demás dominios (`products`, `auth`) están con `...` / `pass` / comentarios `TODO`. **Tu trabajo es completarlos** siguiendo el patrón del ejemplo.
+Los módulos no relacionados con Airbnb que venían en la plantilla fueron eliminados. La API implementada se concentra en los dominios de usuarios, propiedades, reservas, reseñas, amenidades y favoritos.
 
 ---
 

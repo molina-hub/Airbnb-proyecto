@@ -1,17 +1,25 @@
 from datetime import datetime
-from pydantic import BaseModel
+
+from pydantic import BaseModel, EmailStr
 
 
 class CreateUserDTO(BaseModel):
-    email: str
-    password: str
-    age: int
+    email: EmailStr
+    nombre: str
+    es_anfitrion: bool = False
+
+
+class UpdateUserDTO(BaseModel):
+    email: EmailStr | None = None
+    nombre: str | None = None
+    es_anfitrion: bool | None = None
 
 
 class UserResponseDTO(BaseModel):
     id: int
-    email: str
-    age: int
-    created_at: datetime
+    email: EmailStr
+    nombre: str
+    fecha_registro: datetime
+    es_anfitrion: bool
 
     model_config = {"from_attributes": True}

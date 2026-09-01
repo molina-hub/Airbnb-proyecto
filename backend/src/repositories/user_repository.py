@@ -1,33 +1,92 @@
 from sqlalchemy.orm import Session
 
-from src.db.models.user_model import User
+from src.db.models.usuario_model import Usuario
 
 
 class UserRepository:
+
     def __init__(self, db: Session):
         self.db = db
 
-    def create(self, email: str, password_hash: str, age: int) -> User:
-        user = User(email=email, password_hash=password_hash, age=age)
-        self.db.add(user)
+    def create(
+        self,
+        email: str,
+        nombre: str,
+        es_anfitrion: bool
+    ) -> Usuario:
+
+        usuario = Usuario(
+            email=email,
+            nombre=nombre,
+            es_anfitrion=es_anfitrion
+        )
+
+        self.db.add(usuario)
         self.db.commit()
-        self.db.refresh(user)
-        return user
+        self.db.refresh(usuario)
 
-    def find_by_id(self, user_id: int) -> User | None:
-        return self.db.query(User).filter(User.id == user_id).first()
+        return usuario
 
-    def find_by_email(self, email: str) -> User | None:
-        return self.db.query(User).filter(User.email == email).first()
+    def find_by_id(
+        self,
+        user_id: int
+    ) -> Usuario | None:
 
-    def list_all(self) -> list[User]:
-        # TODO: devolver todos los usuarios
-        ...
+        return (
+            self.db.query(Usuario)
+            .filter(Usuario.id == user_id)
+            .first()
+        )
 
-    def update(self, user_id: int, **fields) -> User | None:
-        # TODO: actualizar los campos pasados en **fields y devolver el User actualizado
-        ...
+    def find_by_email(
+        self,
+        email: str
+    ) -> Usuario | None:
 
-    def delete(self, user_id: int) -> bool:
-        # TODO: borrar el User con ese id; devolver True si lo borró, False si no existía
-        ...
+        return (
+            self.db.query(Usuario)
+            .filter(Usuario.email == email)
+            .first()
+        )
+
+    def list_all(self) -> list[Usuario]:
+
+        return (
+            self.db.query(Usuario)
+            .order_by(Usuario.id)
+            .all()
+        )
+
+    def update(
+        self,
+        user_id: int,
+        **fields
+    ) -> Usuario | None:
+
+        usuario = self.find_by_id(user_id)
+
+        if usuario is None:
+            return None
+
+        for field, value in fields.items():
+            setattr(usuario, field, value)
+
+        self.db.commit()
+        self.db.refresh(usuario)
+
+        return usuario
+
+    def delete(
+        self,
+        user_id: int
+    ) -> bool:
+
+        usuario = self.find_by_id(user_id)
+
+        if usuario is None:
+            return False
+
+        self.db.delete(usuario)
+        self.db.commit()
+
+        return True

@@ -74,12 +74,12 @@ INSERT INTO usuarios (email, nombre, es_anfitrion, password_hash) VALUES
 ('lucas@gmail.com', 'Lucas Fernandez', TRUE, '$2b$12$SXZ9Mr5mWYDAOaDE7ia56O9rOKyIkfZ7xeDxBO/4DQWhJ5oUDZfwW');
 
 INSERT INTO propiedades
-(titulo, direccion, ciudad, precio_noche, capacidad, anfitrion_id) VALUES
-('Casa con pileta', 'Av. Siempre Viva 123', 'Buenos Aires', 80000, 6, 1),
-('Departamento centrico', 'Calle Florida 456', 'Buenos Aires', 55000, 3, 2),
-('Casa frente al mar', 'Av. Costanera 789', 'Mar del Plata', 95000, 5, 1),
-('Cabaña de montaña', 'Ruta 40 km 20', 'Bariloche', 110000, 4, 5),
-('Departamento moderno', 'Calle Mitre 321', 'Cordoba', 60000, 4, 5);
+(titulo, direccion, ciudad, descripcion, imagen_url, precio_noche, capacidad, anfitrion_id) VALUES
+('Casa con pileta', 'Av. Siempre Viva 123', 'Buenos Aires', 'Casa luminosa con pileta privada y jardín.', 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85', 80000, 6, 1),
+('Departamento céntrico', 'Calle Florida 456', 'Buenos Aires', 'Departamento moderno a pasos de los principales puntos de interés.', 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?auto=format&fit=crop&w=1200&q=85', 55000, 3, 2),
+('Casa frente al mar', 'Av. Costanera 789', 'Mar del Plata', 'Amplia casa con vista abierta al mar y espacios para descansar.', 'https://images.unsplash.com/photo-1600566753086-00f18fb6b3ea?auto=format&fit=crop&w=1200&q=85', 95000, 5, 1),
+('Cabaña de montaña', 'Ruta 40 km 20', 'Bariloche', 'Cabaña cálida en plena naturaleza, ideal para una escapada.', 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=1200&q=85', 110000, 4, 5),
+('Departamento moderno', 'Calle Mitre 321', 'Córdoba', 'Espacio contemporáneo, equipado y cómodo para trabajar o descansar.', 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?auto=format&fit=crop&w=1200&q=85', 60000, 4, 5);
 
 INSERT INTO amenidades (nombre) VALUES
 ('wifi'),

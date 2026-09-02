@@ -8,6 +8,16 @@ export class ApiError extends Error {
   }
 }
 
+function mensajeAmigable(message: unknown, status?: number): string {
+  const texto = typeof message === "string" ? message : "";
+  const normalizado = texto.toLowerCase();
+  if (status === 401) return "Tu sesión venció o las credenciales son incorrectas. Iniciá sesión nuevamente.";
+  if (normalizado.includes("password") || normalizado.includes("contraseña")) return "La contraseña es incorrecta.";
+  if (normalizado.includes("sqlalchemy") || normalizado.includes("psycopg") || normalizado.includes("traceback") || normalizado.includes("internal server error")) return "No pudimos completar la operación. Intentá nuevamente en unos instantes.";
+  if (normalizado.includes("failed to fetch")) return "No se pudo conectar con la API. Verificá que el backend esté activo.";
+  return texto || "No se pudo completar la operación. Intentá nuevamente.";
+}
+
 export async function api<T>(path: string, options: RequestInit = {}): Promise<T> {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
@@ -23,7 +33,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     });
     if (response.status === 204) return undefined as T;
     const body = await response.json().catch(() => null);
-    if (!response.ok) throw new ApiError(body?.detail ?? "No se pudo completar la operación.", response.status);
+    if (!response.ok) throw new ApiError(mensajeAmigable(body?.detail, response.status), response.status);
     return body as T;
   } catch (cause) {
     if (cause instanceof DOMException && cause.name === "AbortError") {
@@ -40,7 +50,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 export function errorMessage(error: unknown): string {
-  if (error instanceof ApiError) return error.message;
+  if (error instanceof ApiError) return mensajeAmigable(error.message, error.status);
   if (error instanceof TypeError) return "No se pudo conectar con la API. Intentá nuevamente en unos instantes.";
-  return error instanceof Error ? error.message : "Ocurrió un error inesperado.";
+  return error instanceof Error ? mensajeAmigable(error.message) : "Ocurrió un error inesperado.";
 }

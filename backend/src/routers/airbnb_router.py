@@ -118,8 +118,18 @@ def buscar_propiedades(
     return [propiedad_data(p) for p in query.order_by(Propiedad.id).all()]
 
 
+@router.get("/propiedades/{propiedad_id:int}")
+def obtener_propiedad(propiedad_id: int, db: Session = Depends(get_db)):
+    propiedad = db.query(Propiedad).options(joinedload(Propiedad.amenidades)).get(propiedad_id)
+    if not propiedad:
+        fail(404, "Propiedad no encontrada")
+    return propiedad_data(propiedad)
+
+
 @router.post("/reservas", status_code=status.HTTP_201_CREATED)
-def crear_reserva(payload: ReservaCreate, db: Session = Depends(get_db)):
+def crear_reserva(payload: ReservaCreate, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    if payload.huesped_id != usuario.id:
+        fail(403, "Solo podés crear reservas para tu propia cuenta")
     if payload.fecha_inicio >= payload.fecha_fin:
         fail(422, "La fecha de inicio debe ser anterior a la fecha de fin")
     propiedad = db.get(Propiedad, payload.propiedad_id)
@@ -142,7 +152,9 @@ def crear_reserva(payload: ReservaCreate, db: Session = Depends(get_db)):
 
 @router.patch("/reservas/{reserva_id}/estado")
 @router.put("/reservas/{reserva_id}/estado")
-def cambiar_estado_reserva(reserva_id: int, payload: EstadoReservaUpdate, db: Session = Depends(get_db)):
+def cambiar_estado_reserva(reserva_id: int, payload: EstadoReservaUpdate, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    if payload.anfitrion_id != usuario.id:
+        fail(403, "Solo el anfitrión autenticado puede administrar sus reservas")
     if payload.estado not in ESTADOS:
         fail(422, "Estado inválido")
     reserva = db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion)).get(reserva_id)
@@ -205,6 +217,16 @@ def listar_favoritos(usuario_id: int, db: Session = Depends(get_db)):
 @router.get("/favoritos")
 def mis_favoritos(usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
     return listar_favoritos(usuario.id, db)
+
+
+@router.post("/favoritos/{propiedad_id}", status_code=status.HTTP_201_CREATED)
+def agregar_mi_favorito(propiedad_id: int, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    return agregar_favorito(usuario.id, propiedad_id, db)
+
+
+@router.delete("/favoritos/{propiedad_id}", status_code=status.HTTP_204_NO_CONTENT)
+def quitar_mi_favorito(propiedad_id: int, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    return quitar_favorito(usuario.id, propiedad_id, db)
 
 
 @router.post("/usuarios/{usuario_id}/favoritos/{propiedad_id}", status_code=status.HTTP_201_CREATED)

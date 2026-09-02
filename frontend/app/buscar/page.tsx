@@ -1,7 +1,9 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { api, errorMessage } from "../../lib/api";
+import { useAuth } from "../../components/auth-provider";
 
 type Propiedad = {
   id: number;
@@ -10,6 +12,7 @@ type Propiedad = {
   ciudad: string;
   precio_noche: number;
   capacidad: number;
+  imagen_url?: string | null;
   reservas: {
     fecha_inicio: string;
     fecha_fin: string;
@@ -19,6 +22,7 @@ type Propiedad = {
 
 
 export default function BuscarPage() {
+  const { usuario } = useAuth();
   const [ciudad, setCiudad] = useState("");
   const [fechaDesde, setFechaDesde] = useState("");
   const [fechaHasta, setFechaHasta] = useState("");
@@ -33,6 +37,27 @@ export default function BuscarPage() {
     useState(false);
 
   const [error, setError] = useState("");
+  const [favoritos, setFavoritos] = useState<number[]>([]);
+  const [actualizandoFavorito, setActualizandoFavorito] = useState<number | null>(null);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      if (!usuario) { setFavoritos([]); return; }
+      void api<Propiedad[]>("/favoritos").then((lista) => setFavoritos(lista.map((propiedad) => propiedad.id))).catch(() => setFavoritos([]));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [usuario]);
+
+  async function alternarFavorito(propiedadId: number) {
+    if (!usuario) { setError("Debés iniciar sesión para guardar favoritos."); return; }
+    const esFavorito = favoritos.includes(propiedadId);
+    setActualizandoFavorito(propiedadId);
+    try {
+      await api(`/favoritos/${propiedadId}`, { method: esFavorito ? "DELETE" : "POST" });
+      setFavoritos((actuales) => esFavorito ? actuales.filter((id) => id !== propiedadId) : [...actuales, propiedadId]);
+    } catch (cause) { setError(errorMessage(cause)); }
+    finally { setActualizandoFavorito(null); }
+  }
 
   async function buscarPropiedades(
     event: FormEvent<HTMLFormElement>
@@ -281,9 +306,7 @@ export default function BuscarPage() {
                     key={propiedad.id}
                     className="overflow-hidden rounded-3xl bg-white shadow"
                   >
-                    <div className="flex h-40 items-center justify-center bg-gray-200">
-                      <span className="text-5xl">🏠</span>
-                    </div>
+                    <div className="relative"><img src={propiedad.imagen_url || "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85"} onError={(event) => { event.currentTarget.src = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=1200&q=85"; }} alt={propiedad.titulo} className="h-40 w-full object-cover" /><button type="button" aria-label={favoritos.includes(propiedad.id) ? "Quitar de favoritos" : "Agregar a favoritos"} disabled={actualizandoFavorito === propiedad.id} onClick={() => void alternarFavorito(propiedad.id)} className={`absolute right-3 top-3 grid h-10 w-10 place-items-center rounded-full bg-white text-xl shadow disabled:opacity-60 ${favoritos.includes(propiedad.id) ? "text-rose-600" : "text-slate-950"}`}>{favoritos.includes(propiedad.id) ? "♥" : "♡"}</button></div>
 
                     <div className="p-6">
                       <h3 className="text-xl font-bold text-gray-900">

@@ -36,7 +36,7 @@ class EstadoReservaUpdate(BaseModel):
 
 class ResenaCreate(BaseModel):
     reserva_id: int = Field(gt=0)
-    autor_id: int = Field(gt=0)
+    autor_id: int | None = Field(default=None, gt=0)
     puntaje: int = Field(ge=1, le=5)
     comentario: str | None = Field(default=None, max_length=2000)
 
@@ -188,26 +188,41 @@ def cambiar_estado_reserva(reserva_id: int, payload: EstadoReservaUpdate, usuari
     return {**reserva_data(reserva), **resultado}
 
 
-@router.post("/propiedades/{propiedad_id}/resenas", status_code=status.HTTP_201_CREATED)
-def crear_resena(propiedad_id: int, payload: ResenaCreate, db: Session = Depends(get_db)):
+def guardar_resena(propiedad_id: int, payload: ResenaCreate, usuario: Usuario, db: Session) -> dict:
     reserva = db.get(Reserva, payload.reserva_id)
     if not reserva or reserva.propiedad_id != propiedad_id:
         fail(404, "Reserva no encontrada para la propiedad")
-    if reserva.huesped_id != payload.autor_id:
+    if payload.autor_id is not None and payload.autor_id != usuario.id:
+        fail(403, "No podés crear reseñas en nombre de otra persona")
+    if reserva.huesped_id != usuario.id:
         fail(403, "Solo el huésped de la reserva puede reseñar")
     if reserva.estado != "confirmada" or reserva.fecha_fin >= date.today():
         fail(409, "Solo se puede reseñar una estancia confirmada y finalizada")
     if db.query(Resena.id).filter_by(reserva_id=reserva.id).first():
         fail(409, "Ya existe una reseña para esta reserva")
-    resena = Resena(**payload.model_dump()); db.add(resena); db.commit(); db.refresh(resena)
+    resena = Resena(reserva_id=reserva.id, autor_id=usuario.id, puntaje=payload.puntaje, comentario=payload.comentario)
+    db.add(resena); db.commit(); db.refresh(resena)
     return {"id": resena.id, "reserva_id": resena.reserva_id, "autor_id": resena.autor_id, "puntaje": resena.puntaje, "comentario": resena.comentario, "fecha": resena.fecha}
+
+
+@router.post("/resenas", status_code=status.HTTP_201_CREATED)
+def crear_resena(payload: ResenaCreate, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    reserva = db.get(Reserva, payload.reserva_id)
+    if not reserva:
+        fail(404, "Reserva no encontrada")
+    return guardar_resena(reserva.propiedad_id, payload, usuario, db)
+
+
+@router.post("/propiedades/{propiedad_id}/resenas", status_code=status.HTTP_201_CREATED)
+def crear_resena_para_propiedad(propiedad_id: int, payload: ResenaCreate, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    return guardar_resena(propiedad_id, payload, usuario, db)
 
 
 @router.get("/propiedades/{propiedad_id}/resenas")
 def listar_resenas(propiedad_id: int, db: Session = Depends(get_db)):
     if not db.get(Propiedad, propiedad_id): fail(404, "Propiedad no encontrada")
-    filas = db.query(Resena).join(Reserva).filter(Reserva.propiedad_id == propiedad_id).order_by(Resena.fecha.desc()).all()
-    return [{"id": r.id, "reserva_id": r.reserva_id, "autor_id": r.autor_id, "puntaje": r.puntaje, "comentario": r.comentario, "fecha": r.fecha} for r in filas]
+    filas = db.query(Resena).options(joinedload(Resena.autor)).join(Reserva).filter(Reserva.propiedad_id == propiedad_id).order_by(Resena.fecha.desc()).all()
+    return [{"id": r.id, "reserva_id": r.reserva_id, "autor_id": r.autor_id, "autor": {"nombre": r.autor.nombre}, "puntaje": r.puntaje, "comentario": r.comentario, "fecha": r.fecha} for r in filas]
 
 
 @router.get("/usuarios/{usuario_id}/favoritos")

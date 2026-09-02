@@ -16,11 +16,14 @@ erDiagram
                string email UK
                string nombre
                datetime fecha_registro
-               boolean es_anfitrion }
+               boolean es_anfitrion
+               string password_hash }
     PROPIEDADES { int id PK
                   string titulo
                   string direccion
                   string ciudad
+                  string descripcion
+                  string imagen_url
                   decimal precio_noche
                   int capacidad
                   int anfitrion_id FK }
@@ -45,3 +48,10 @@ erDiagram
                 int propiedad_id PK_FK
                 datetime fecha }
 ```
+
+## Seguridad y reglas de integridad
+
+- `usuarios.password_hash` es obligatorio y guarda exclusivamente hashes bcrypt; la contraseña original nunca se persiste.
+- `resenas.reserva_id` es único: cada reserva finalizada y confirmada puede generar una única reseña de 1 a 5 puntos.
+- `favoritos` y `propiedad_amenidades` son tablas de relación N:M. `favoritos.fecha` registra cuándo se guardó la propiedad.
+- `reservas.total` conserva el importe total calculado al crear la reserva. La calculadora de gastos compartidos del frontend solo deriva cuotas por viajero y no crea datos adicionales.

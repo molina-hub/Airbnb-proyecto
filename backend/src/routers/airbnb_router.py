@@ -196,8 +196,10 @@ def guardar_resena(propiedad_id: int, payload: ResenaCreate, usuario: Usuario, d
         fail(403, "No podés crear reseñas en nombre de otra persona")
     if reserva.huesped_id != usuario.id:
         fail(403, "Solo el huésped de la reserva puede reseñar")
-    if reserva.estado != "confirmada" or reserva.fecha_fin >= date.today():
-        fail(409, "Solo se puede reseñar una estancia confirmada y finalizada")
+    # Una reserva confirmada puede reseñarse durante desarrollo aun si su fecha
+    # de salida todavía no llegó; las reservas ya terminadas también califican.
+    if reserva.estado not in {"confirmada", "finalizada"} and reserva.fecha_fin > date.today():
+        fail(409, "Solo se puede reseñar una estancia confirmada o finalizada")
     if db.query(Resena.id).filter_by(reserva_id=reserva.id).first():
         fail(409, "Ya existe una reseña para esta reserva")
     resena = Resena(reserva_id=reserva.id, autor_id=usuario.id, puntaje=payload.puntaje, comentario=payload.comentario)

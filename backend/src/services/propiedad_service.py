@@ -41,6 +41,8 @@ class PropiedadService:
             precio_noche=dto.precio_noche,
             capacidad=dto.capacidad,
             anfitrion_id=dto.anfitrion_id,
+            descripcion=dto.descripcion,
+            imagen_url=dto.imagen_url,
         )
 
         return PropiedadResponseDTO.model_validate(propiedad)

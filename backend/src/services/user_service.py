@@ -8,6 +8,7 @@ from src.dtos.user_dto import (
 )
 from src.mappers.user_mapper import to_user_response
 from src.repositories.user_repository import UserRepository
+from src.utils.hash import hash_password
 
 
 class UserService:
@@ -33,7 +34,8 @@ class UserService:
             usuario = self.repo.create(
                 email=str(dto.email),
                 nombre=dto.nombre,
-                es_anfitrion=dto.es_anfitrion
+                es_anfitrion=dto.es_anfitrion,
+                password_hash=hash_password(dto.password),
             )
 
             return to_user_response(usuario)

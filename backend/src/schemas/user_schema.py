@@ -11,6 +11,7 @@ class CreateUserSchema(BaseModel):
     )
 
     es_anfitrion: bool = False
+    password: str = Field(min_length=8, max_length=128)
 
 
 class UpdateUserSchema(BaseModel):

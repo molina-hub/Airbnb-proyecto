@@ -11,7 +11,8 @@ CREATE TABLE usuarios (
     email VARCHAR(150) NOT NULL UNIQUE,
     nombre VARCHAR(100) NOT NULL,
     fecha_registro TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    es_anfitrion BOOLEAN NOT NULL DEFAULT FALSE
+    es_anfitrion BOOLEAN NOT NULL DEFAULT FALSE,
+    password_hash VARCHAR(255) NOT NULL
 );
 
 CREATE TABLE propiedades (
@@ -21,6 +22,8 @@ CREATE TABLE propiedades (
     ciudad VARCHAR(100) NOT NULL,
     precio_noche NUMERIC(10, 2) NOT NULL CHECK (precio_noche > 0),
     capacidad INTEGER NOT NULL CHECK (capacidad > 0),
+    descripcion VARCHAR(1000),
+    imagen_url VARCHAR(500),
     anfitrion_id INTEGER NOT NULL REFERENCES usuarios(id)
 );
 
@@ -63,12 +66,12 @@ CREATE TABLE favoritos (
     PRIMARY KEY (usuario_id, propiedad_id)
 );
 
-INSERT INTO usuarios (email, nombre, es_anfitrion) VALUES
-('juan@gmail.com', 'Juan Perez', TRUE),
-('maria@gmail.com', 'Maria Lopez', TRUE),
-('pedro@gmail.com', 'Pedro Gonzalez', FALSE),
-('ana@gmail.com', 'Ana Martinez', FALSE),
-('lucas@gmail.com', 'Lucas Fernandez', TRUE);
+INSERT INTO usuarios (email, nombre, es_anfitrion, password_hash) VALUES
+('juan@gmail.com', 'Juan Perez', TRUE, '$2b$12$SXZ9Mr5mWYDAOaDE7ia56O9rOKyIkfZ7xeDxBO/4DQWhJ5oUDZfwW'),
+('maria@gmail.com', 'Maria Lopez', TRUE, '$2b$12$SXZ9Mr5mWYDAOaDE7ia56O9rOKyIkfZ7xeDxBO/4DQWhJ5oUDZfwW'),
+('pedro@gmail.com', 'Pedro Gonzalez', FALSE, '$2b$12$SXZ9Mr5mWYDAOaDE7ia56O9rOKyIkfZ7xeDxBO/4DQWhJ5oUDZfwW'),
+('ana@gmail.com', 'Ana Martinez', FALSE, '$2b$12$SXZ9Mr5mWYDAOaDE7ia56O9rOKyIkfZ7xeDxBO/4DQWhJ5oUDZfwW'),
+('lucas@gmail.com', 'Lucas Fernandez', TRUE, '$2b$12$SXZ9Mr5mWYDAOaDE7ia56O9rOKyIkfZ7xeDxBO/4DQWhJ5oUDZfwW');
 
 INSERT INTO propiedades
 (titulo, direccion, ciudad, precio_noche, capacidad, anfitrion_id) VALUES

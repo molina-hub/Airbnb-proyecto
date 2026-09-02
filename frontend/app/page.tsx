@@ -1,182 +1,101 @@
 "use client";
+/* eslint-disable @next/next/no-img-element */
 
-import { useState } from "react";
+import Link from "next/link";
+import { FormEvent, useEffect, useState } from "react";
+import { api, errorMessage } from "../lib/api";
+import { Navbar } from "../components/navbar";
+
+type Propiedad = {
+  id: number;
+  titulo: string;
+  direccion: string;
+  ciudad: string;
+  precio_noche: number;
+  capacidad: number;
+  imagen_url?: string | null;
+};
+
+const PLACEHOLDER = "/property-placeholder.svg";
+
+function imagenSegura(url: string | null | undefined) {
+  return url && /^https?:\/\//i.test(url) ? url : PLACEHOLDER;
+}
 
 export default function Home() {
   const [ciudad, setCiudad] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [huespedes, setHuespedes] = useState(1);
+  const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [buscando, setBuscando] = useState(false);
+  const [error, setError] = useState("");
 
-  function buscarPropiedades(e: React.FormEvent) {
-    e.preventDefault();
-
-    alert(
-      `Buscando propiedades en ${ciudad || "cualquier ciudad"} desde ${
-        desde || "cualquier fecha"
-      } hasta ${hasta || "cualquier fecha"} para ${huespedes} huésped${
-        huespedes !== 1 ? "es" : ""
-      }.`
-    );
+  async function cargarPropiedades(query = "") {
+    try {
+      setError("");
+      setPropiedades(await api<Propiedad[]>(`/propiedades${query}`));
+    } catch (cause) {
+      setError(errorMessage(cause));
+    }
   }
 
-  return (
-    <main className="min-h-screen bg-white text-gray-900">
-      <header className="border-b bg-white">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <h1 className="text-3xl font-bold text-rose-500">Airbnb</h1>
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void cargarPropiedades().finally(() => setCargando(false));
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
 
-          <nav className="flex items-center gap-6">
-            <a href="#" className="text-sm font-medium hover:text-rose-500">
-              Alojamientos
-            </a>
+  async function buscarPropiedades(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setError("");
+    if (desde && hasta && hasta <= desde) {
+      setError("La fecha de salida debe ser posterior a la fecha de entrada.");
+      return;
+    }
+    if (huespedes < 1) {
+      setError("La cantidad de huéspedes debe ser mayor a 0.");
+      return;
+    }
+    const params = new URLSearchParams({ huespedes: String(huespedes) });
+    if (ciudad.trim()) params.set("ciudad", ciudad.trim());
+    if (desde) params.set("desde", desde);
+    if (hasta) params.set("hasta", hasta);
+    setBuscando(true);
+    await cargarPropiedades(`?${params.toString()}`);
+    setBuscando(false);
+    document.getElementById("alojamientos")?.scrollIntoView({ behavior: "smooth" });
+  }
 
-            <a href="#" className="text-sm font-medium hover:text-rose-500">
-              Mis reservas
-            </a>
+  return <main className="min-h-screen bg-white text-gray-900">
+    <Navbar />
 
-            <a href="#" className="text-sm font-medium hover:text-rose-500">
-              Favoritos
-            </a>
-
-            <button className="rounded-full border px-5 py-2 text-sm font-medium hover:bg-gray-100">
-              Iniciar sesión
-            </button>
-          </nav>
+    <section className="bg-gray-100 px-6 py-16"><div className="mx-auto max-w-5xl text-center">
+      <h1 className="text-5xl font-bold tracking-tight">Encontrá tu próximo alojamiento</h1>
+      <p className="mt-4 text-lg text-gray-600">Buscá propiedades, reservá tu estadía y disfrutá del viaje.</p>
+      <form onSubmit={buscarPropiedades} className="mt-10 rounded-3xl bg-white p-4 shadow-lg">
+        <div className="grid gap-4 md:grid-cols-4">
+          <Campo etiqueta="Ciudad"><input type="text" placeholder="¿A dónde vas?" value={ciudad} onChange={(e) => setCiudad(e.target.value)} className="campo" /></Campo>
+          <Campo etiqueta="Desde"><input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} className="campo" /></Campo>
+          <Campo etiqueta="Hasta"><input type="date" min={desde || undefined} value={hasta} onChange={(e) => setHasta(e.target.value)} className="campo" /></Campo>
+          <Campo etiqueta="Huéspedes"><input type="number" min="1" value={huespedes} onChange={(e) => setHuespedes(Number(e.target.value))} className="campo" /></Campo>
         </div>
-      </header>
+        {error && <p className="mt-4 rounded-xl bg-red-100 p-3 text-left text-sm font-medium text-red-700" role="alert">{error}</p>}
+        <button type="submit" disabled={buscando} className="mt-5 w-full rounded-xl bg-rose-500 px-6 py-4 font-semibold text-white transition hover:bg-rose-600 disabled:cursor-not-allowed disabled:bg-rose-300">{buscando ? "Buscando…" : "Buscar propiedades"}</button>
+      </form>
+    </div></section>
 
-      <section className="bg-gray-100 px-6 py-16">
-        <div className="mx-auto max-w-5xl text-center">
-          <h2 className="text-5xl font-bold tracking-tight">
-            Encontrá tu próximo alojamiento
-          </h2>
+    <section id="alojamientos" className="mx-auto max-w-7xl px-6 py-14">
+      <h2 className="text-3xl font-bold">Explorá alojamientos</h2>
+      <p className="mt-2 text-gray-600">Propiedades disponibles según tus criterios de búsqueda.</p>
+      {cargando ? <p className="mt-8" role="status">Cargando alojamientos…</p> : propiedades.length === 0 ? <p className="mt-8 rounded-xl bg-gray-100 p-5 text-gray-600">No encontramos alojamientos disponibles con esos filtros.</p> : <div className="mt-8 grid gap-6 md:grid-cols-3">{propiedades.map((p) => <article key={p.id} className="overflow-hidden rounded-2xl border bg-white shadow-sm"><img src={imagenSegura(p.imagen_url)} alt={`Alojamiento: ${p.titulo}`} className="h-48 w-full object-cover" onError={(e) => { e.currentTarget.src = PLACEHOLDER; }} /><div className="p-5"><h3 className="text-xl font-semibold">{p.titulo}</h3><p className="mt-1 text-gray-600">{p.ciudad} · {p.capacidad} huéspedes</p><p className="mt-2 text-gray-600">{p.direccion}</p><p className="mt-4 font-semibold">${Number(p.precio_noche).toLocaleString("es-AR")} por noche</p><Link className="mt-4 inline-block font-semibold text-rose-600 hover:underline" href="/reservar">Reservar</Link></div></article>)}</div>}
+    </section>
+    <footer className="border-t bg-gray-50 px-6 py-8"><div className="mx-auto max-w-7xl text-center text-sm text-gray-500">Airbnb - Proyecto de Taller de Programación</div></footer>
+  </main>;
+}
 
-          <p className="mt-4 text-lg text-gray-600">
-            Buscá propiedades, reservá tu estadía y disfrutá del viaje.
-          </p>
-
-          <form
-            onSubmit={buscarPropiedades}
-            className="mt-10 rounded-3xl bg-white p-4 shadow-lg"
-          >
-            <div className="grid gap-4 md:grid-cols-4">
-              <div className="text-left">
-                <label className="mb-2 block text-sm font-semibold">
-                  Ciudad
-                </label>
-
-                <input
-                  type="text"
-                  placeholder="¿A dónde vas?"
-                  value={ciudad}
-                  onChange={(e) => setCiudad(e.target.value)}
-                  className="w-full rounded-xl border px-4 py-3 outline-none focus:border-rose-500"
-                />
-              </div>
-
-              <div className="text-left">
-                <label className="mb-2 block text-sm font-semibold">
-                  Desde
-                </label>
-
-                <input
-                  type="date"
-                  value={desde}
-                  onChange={(e) => setDesde(e.target.value)}
-                  className="w-full rounded-xl border px-4 py-3 outline-none focus:border-rose-500"
-                />
-              </div>
-
-              <div className="text-left">
-                <label className="mb-2 block text-sm font-semibold">
-                  Hasta
-                </label>
-
-                <input
-                  type="date"
-                  value={hasta}
-                  onChange={(e) => setHasta(e.target.value)}
-                  className="w-full rounded-xl border px-4 py-3 outline-none focus:border-rose-500"
-                />
-              </div>
-
-              <div className="text-left">
-                <label className="mb-2 block text-sm font-semibold">
-                  Huéspedes
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  value={huespedes}
-                  onChange={(e) => setHuespedes(Number(e.target.value))}
-                  className="w-full rounded-xl border px-4 py-3 outline-none focus:border-rose-500"
-                />
-              </div>
-            </div>
-
-            <button
-              type="submit"
-              className="mt-5 w-full rounded-xl bg-rose-500 px-6 py-4 font-semibold text-white transition hover:bg-rose-600"
-            >
-              Buscar propiedades
-            </button>
-          </form>
-        </div>
-      </section>
-
-      <section className="mx-auto max-w-7xl px-6 py-14">
-        <h2 className="text-3xl font-bold">Explorá alojamientos</h2>
-
-        <p className="mt-2 text-gray-600">
-          Próximamente vas a poder ver propiedades disponibles.
-        </p>
-
-        <div className="mt-8 grid gap-6 md:grid-cols-3">
-          <div className="rounded-2xl border p-6 shadow-sm">
-            <div className="flex h-40 items-center justify-center rounded-xl bg-gray-200 text-gray-500">
-              Imagen de propiedad
-            </div>
-
-            <h3 className="mt-4 text-xl font-semibold">Buenos Aires</h3>
-
-            <p className="mt-2 text-gray-600">
-              Propiedades disponibles próximamente.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border p-6 shadow-sm">
-            <div className="flex h-40 items-center justify-center rounded-xl bg-gray-200 text-gray-500">
-              Imagen de propiedad
-            </div>
-
-            <h3 className="mt-4 text-xl font-semibold">Córdoba</h3>
-
-            <p className="mt-2 text-gray-600">
-              Propiedades disponibles próximamente.
-            </p>
-          </div>
-
-          <div className="rounded-2xl border p-6 shadow-sm">
-            <div className="flex h-40 items-center justify-center rounded-xl bg-gray-200 text-gray-500">
-              Imagen de propiedad
-            </div>
-
-            <h3 className="mt-4 text-xl font-semibold">Bariloche</h3>
-
-            <p className="mt-2 text-gray-600">
-              Propiedades disponibles próximamente.
-            </p>
-          </div>
-        </div>
-      </section>
-
-      <footer className="border-t bg-gray-50 px-6 py-8">
-        <div className="mx-auto max-w-7xl text-center text-sm text-gray-500">
-          Airbnb - Proyecto de Taller de Programación
-        </div>
-      </footer>
-    </main>
-  );
+function Campo({ etiqueta, children }: { etiqueta: string; children: React.ReactNode }) {
+  return <div className="text-left"><label className="mb-2 block text-sm font-semibold">{etiqueta}</label>{children}</div>;
 }

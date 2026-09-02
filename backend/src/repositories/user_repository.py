@@ -12,13 +12,15 @@ class UserRepository:
         self,
         email: str,
         nombre: str,
-        es_anfitrion: bool
+        es_anfitrion: bool,
+        password_hash: str,
     ) -> Usuario:
 
         usuario = Usuario(
             email=email,
             nombre=nombre,
-            es_anfitrion=es_anfitrion
+            es_anfitrion=es_anfitrion,
+            password_hash=password_hash,
         )
 
         self.db.add(usuario)

@@ -13,6 +13,8 @@ class Propiedad(Base):
     ciudad = Column(String(100), nullable=False)
     precio_noche = Column(Numeric(10, 2), nullable=False)
     capacidad = Column(Integer, nullable=False)
+    descripcion = Column(String(1000), nullable=True)
+    imagen_url = Column(String(500), nullable=True)
     anfitrion_id = Column(Integer, ForeignKey("usuarios.id"), nullable=False)
 
     anfitrion = relationship("Usuario", back_populates="propiedades")

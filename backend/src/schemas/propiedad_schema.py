@@ -10,6 +10,8 @@ class CreatePropiedadSchema(BaseModel):
     precio_noche: Decimal = Field(gt=0)
     capacidad: int = Field(gt=0)
     anfitrion_id: int = Field(gt=0)
+    descripcion: str | None = Field(default=None, max_length=1000)
+    imagen_url: str | None = Field(default=None, max_length=500)
 
 
 class UpdatePropiedadSchema(BaseModel):
@@ -18,3 +20,5 @@ class UpdatePropiedadSchema(BaseModel):
     ciudad: str | None = Field(default=None, min_length=1, max_length=100)
     precio_noche: Decimal | None = Field(default=None, gt=0)
     capacidad: int | None = Field(default=None, gt=0)
+    descripcion: str | None = Field(default=None, max_length=1000)
+    imagen_url: str | None = Field(default=None, max_length=500)

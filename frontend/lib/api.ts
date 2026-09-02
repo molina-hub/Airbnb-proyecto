@@ -14,10 +14,11 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
   options.signal?.addEventListener("abort", abortFromCaller, { once: true });
 
   try {
+    const token = typeof window === "undefined" ? null : localStorage.getItem("airbnb_token");
     const response = await fetch(`${API_URL}${path}`, {
       ...options,
       signal: controller.signal,
-      headers: { "Content-Type": "application/json", ...options.headers },
+      headers: { "Content-Type": "application/json", ...(token ? { Authorization: `Bearer ${token}` } : {}), ...options.headers },
     });
     if (response.status === 204) return undefined as T;
     const body = await response.json().catch(() => null);

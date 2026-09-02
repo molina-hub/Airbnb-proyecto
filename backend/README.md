@@ -37,6 +37,18 @@ uvicorn src.app:app --reload
 
 Abrir http://localhost:8000/docs para ver Swagger.
 
+## Sesión y datos iniciales
+
+El registro solicita una contraseña de al menos ocho caracteres y el inicio de
+sesión entrega un JWT junto al perfil del usuario. Para reinicializar la base,
+ejecutá `src/db/tables.sql`: las cuentas de ejemplo usan la contraseña
+`password123`.
+
+Si la base ya existía antes de agregar autenticación e imágenes, aplicá una
+única vez `src/db/migrate_auth_and_properties.sql`. La migración asigna
+`password123` a las cuentas existentes; cambiala tras el primer inicio de
+sesión en un entorno real.
+
 ## API Airbnb
 
 Las rutas se publican bajo `/api`. Además del CRUD de usuarios y propiedades,

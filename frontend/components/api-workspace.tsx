@@ -2,16 +2,18 @@
 
 import { FormEvent, useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "../lib/api";
+import { Navbar } from "./navbar";
+import { useAuth } from "./auth-provider";
 
 type Amenidad = { id: number; nombre: string };
 type Propiedad = { id: number; titulo: string; ciudad: string; precio_noche: number; amenidades: Amenidad[]; direccion?: string; capacidad?: number; anfitrion_id?: number };
 type Reserva = { id: number; propiedad_id: number; fecha_inicio: string; fecha_fin: string; estado: string; total: number; propiedad: { titulo: string; ciudad: string }; anfitrion: { id: number; nombre: string } };
 type Mode = "amenidades" | "disponibilidad" | "ingresos" | "resenas" | "top" | "historial" | "gestion" | "favoritos" | "reservar" | "mispropiedades";
 
-const userId = 3;
-const hostId = 1;
-
 export default function ApiWorkspace({ mode }: { mode: Mode }) {
+  const { usuario, listo } = useAuth();
+  const userId = usuario?.id ?? 0;
+  const hostId = usuario?.id ?? 0;
   const [propiedades, setPropiedades] = useState<Propiedad[]>([]);
   const [reservas, setReservas] = useState<Reserva[]>([]);
   const [amenidades, setAmenidades] = useState<Amenidad[]>([]);
@@ -30,6 +32,7 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
   const [procesando, setProcesando] = useState(false);
 
   const cargar = useCallback(async () => {
+    if (!usuario) { setCargando(false); return; }
     setError("");
     setCargando(true);
     try {
@@ -51,7 +54,7 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
       if (mode === "top") setResultado(await api<unknown[]>("/propiedades/top"));
     } catch (cause) { setError(errorMessage(cause)); }
     finally { setCargando(false); }
-  }, [mode]);
+  }, [mode, usuario, userId, hostId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void cargar(); }, 0);
@@ -85,14 +88,16 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
     if (mode === "mispropiedades") return <div className="space-y-3">{propiedades.map((p) => <article key={p.id} className="rounded border p-4"><strong>{p.titulo}</strong> — {p.ciudad} — ${p.precio_noche}<button className="ml-3 rounded bg-red-600 px-3 py-1 text-white" onClick={() => void ejecutar(() => api(`/propiedades/${p.id}`, {method: "DELETE"}), "Propiedad eliminada.")}>Eliminar</button></article>)}{propiedades.length === 0 && <p>No hay propiedades publicadas.</p>}</div>;
     if (mode === "historial") return <Reservas reservas={reservas} />;
     if (mode === "gestion") return <Reservas reservas={reservas} accion={(reserva, estado) => void ejecutar(() => api(`/reservas/${reserva.id}/estado`, {method: "PATCH", body: JSON.stringify({estado, anfitrion_id: hostId})}), `Reserva ${estado}.`)} />;
-    return <Resenas reservas={reservas} ejecutar={ejecutar} />;
+    return <Resenas reservas={reservas} ejecutar={ejecutar} autorId={userId} />;
   };
 
   const titulos: Record<Mode, string> = {amenidades: "Amenidades", disponibilidad: "Disponibilidad", ingresos: "Ingresos del anfitrión", resenas: "Reseñas", top: "Top propiedades", historial: "Mis reservas", gestion: "Gestionar reservas", favoritos: "Favoritos", reservar: "Reservar", mispropiedades: "Mis propiedades"};
-  return <main className="min-h-screen bg-gray-100 p-6"><section className="mx-auto max-w-4xl rounded-3xl bg-white p-8 shadow"><a href="/" className="text-2xl font-bold text-rose-500">Airbnb</a><h1 className="mt-6 text-3xl font-bold">{titulos[mode]}</h1><p className="mt-2 text-gray-600">Datos obtenidos directamente desde la API.</p>{cargando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Cargando datos…</p>}{procesando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Procesando operación…</p>}{error && <p className="mt-4 rounded bg-red-100 p-3 text-red-700" role="alert">{error}</p>}{mensaje && <p className="mt-4 rounded bg-green-100 p-3 text-green-700">{mensaje}</p>}<fieldset className="mt-6 disabled:opacity-60" disabled={cargando || procesando}>{contenido()}</fieldset></section></main>;
+  if (!listo) return <main className="min-h-screen bg-slate-50"><Navbar/><p className="p-8">Cargando sesión…</p></main>;
+  if (!usuario) return <main className="min-h-screen bg-slate-50"><Navbar/><section className="mx-auto max-w-xl p-10"><h1 className="text-3xl font-bold">Necesitás iniciar sesión</h1><p className="mt-3 text-slate-700">Esta sección usa tu perfil para mostrar y gestionar tus datos.</p><a className="mt-5 inline-block rounded-xl bg-rose-600 px-5 py-3 font-bold text-white" href="/registro">Iniciar sesión</a></section></main>;
+  return <main className="min-h-screen bg-slate-50"><Navbar/><section className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50"><h1 className="text-3xl font-bold text-slate-950">{titulos[mode]}</h1><p className="mt-2 text-slate-700">Datos obtenidos directamente desde la API.</p>{cargando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Cargando datos…</p>}{procesando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Procesando operación…</p>}{error && <p className="mt-4 rounded bg-red-100 p-3 text-red-700" role="alert">{error}</p>}{mensaje && <p className="mt-4 rounded bg-green-100 p-3 text-green-700">{mensaje}</p>}<fieldset className="mt-6 disabled:opacity-60" disabled={cargando || procesando}>{contenido()}</fieldset></section></main>;
 }
 
 function Listado({ datos }: { datos: unknown }) { return <pre className="mt-5 overflow-auto rounded bg-gray-100 p-4 text-sm">{JSON.stringify(datos, null, 2)}</pre>; }
 function Dias({ calendario }: { calendario: { dias: {fecha: string; estado: string}[]}}) { return <div className="mt-5 grid grid-cols-4 gap-2">{calendario.dias.map((d) => <span key={d.fecha} className={d.estado === "ocupado" ? "rounded bg-red-100 p-2" : "rounded bg-green-100 p-2"}>{d.fecha}: {d.estado}</span>)}</div>; }
 function Reservas({ reservas, accion }: { reservas: Reserva[]; accion?: (reserva: Reserva, estado: string) => void }) { return <div className="space-y-3">{reservas.map((r) => <article className="rounded border p-4" key={r.id}><strong>{r.propiedad.titulo}</strong><p>{r.fecha_inicio} a {r.fecha_fin} — {r.estado} — ${r.total}</p>{accion && r.estado === "pendiente" && <><button className="mr-2 rounded bg-green-600 px-3 py-1 text-white" onClick={() => accion(r, "confirmada")}>Confirmar</button><button className="rounded bg-red-600 px-3 py-1 text-white" onClick={() => accion(r, "rechazada")}>Rechazar</button></>}{accion && r.estado === "confirmada" && <button className="rounded bg-gray-700 px-3 py-1 text-white" onClick={() => accion(r, "cancelada")}>Cancelar</button>}</article>)}{reservas.length === 0 && <p>No hay reservas.</p>}</div>; }
-function Resenas({ reservas, ejecutar }: { reservas: Reserva[]; ejecutar: (action: () => Promise<unknown>, ok: string) => Promise<void> }) { const [id, setId] = useState(0); const [puntaje, setPuntaje] = useState(5); const [comentario, setComentario] = useState(""); const reserva = reservas.find((r) => r.id === id); const submit = (event: FormEvent) => { event.preventDefault(); if (reserva) void ejecutar(() => api(`/propiedades/${reserva.propiedad_id}/resenas`, {method: "POST", body: JSON.stringify({reserva_id: reserva.id, autor_id: userId, puntaje, comentario})}), "Reseña creada."); }; return <form onSubmit={submit} className="space-y-3"><select value={id} onChange={(e) => setId(Number(e.target.value))}><option value="0">Elegí una reserva</option>{reservas.map((r) => <option key={r.id} value={r.id}>{r.propiedad.titulo} ({r.fecha_fin})</option>)}</select><input className="ml-3" type="number" min="1" max="5" value={puntaje} onChange={(e) => setPuntaje(Number(e.target.value))}/><textarea className="block w-full border p-2" value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Comentario"/><button className="rounded bg-rose-500 px-4 py-2 text-white">Publicar reseña</button><Reservas reservas={reservas}/></form>; }
+function Resenas({ reservas, ejecutar, autorId }: { reservas: Reserva[]; ejecutar: (action: () => Promise<unknown>, ok: string) => Promise<void>; autorId: number }) { const [id, setId] = useState(0); const [puntaje, setPuntaje] = useState(5); const [comentario, setComentario] = useState(""); const reserva = reservas.find((r) => r.id === id); const submit = (event: FormEvent) => { event.preventDefault(); if (reserva) void ejecutar(() => api(`/propiedades/${reserva.propiedad_id}/resenas`, {method: "POST", body: JSON.stringify({reserva_id: reserva.id, autor_id: autorId, puntaje, comentario})}), "Reseña creada."); }; return <form onSubmit={submit} className="space-y-3"><select value={id} onChange={(e) => setId(Number(e.target.value))}><option value="0">Elegí una reserva</option>{reservas.map((r) => <option key={r.id} value={r.id}>{r.propiedad.titulo} ({r.fecha_fin})</option>)}</select><input className="ml-3" type="number" min="1" max="5" value={puntaje} onChange={(e) => setPuntaje(Number(e.target.value))}/><textarea className="block w-full border p-2" value={comentario} onChange={(e) => setComentario(e.target.value)} placeholder="Comentario"/><button className="rounded bg-rose-500 px-4 py-2 text-white">Publicar reseña</button><Reservas reservas={reservas}/></form>; }

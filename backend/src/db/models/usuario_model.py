@@ -13,6 +13,7 @@ class Usuario(Base):
     nombre = Column(String(100), nullable=False)
     fecha_registro = Column(DateTime, server_default=func.now(), nullable=False)
     es_anfitrion = Column(Boolean, default=False, nullable=False)
+    password_hash = Column(String(255), nullable=False)
 
     propiedades = relationship("Propiedad", back_populates="anfitrion")
     reservas = relationship("Reserva", foreign_keys="Reserva.huesped_id", back_populates="huesped")

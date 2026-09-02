@@ -9,6 +9,8 @@ class CreatePropiedadDTO(BaseModel):
     precio_noche: Decimal
     capacidad: int
     anfitrion_id: int
+    descripcion: str | None = None
+    imagen_url: str | None = None
 
 
 class UpdatePropiedadDTO(BaseModel):
@@ -17,6 +19,8 @@ class UpdatePropiedadDTO(BaseModel):
     ciudad: str | None = None
     precio_noche: Decimal | None = None
     capacidad: int | None = None
+    descripcion: str | None = None
+    imagen_url: str | None = None
 
 
 class PropiedadResponseDTO(BaseModel):
@@ -27,5 +31,7 @@ class PropiedadResponseDTO(BaseModel):
     precio_noche: Decimal
     capacidad: int
     anfitrion_id: int
+    descripcion: str | None = None
+    imagen_url: str | None = None
 
     model_config = ConfigDict(from_attributes=True)

@@ -61,6 +61,8 @@ def propiedad_data(propiedad: Propiedad) -> dict:
         "precio_noche": propiedad.precio_noche,
         "capacidad": propiedad.capacidad,
         "anfitrion_id": propiedad.anfitrion_id,
+        "descripcion": propiedad.descripcion,
+        "imagen_url": propiedad.imagen_url,
         "amenidades": [{"id": a.id, "nombre": a.nombre} for a in propiedad.amenidades],
     }
 
@@ -126,7 +128,7 @@ def crear_reserva(payload: ReservaCreate, db: Session = Depends(get_db)):
     if propiedad.anfitrion_id == payload.huesped_id:
         fail(403, "Un anfitrión no puede reservar su propia propiedad")
     solapada = db.query(Reserva.id).filter(
-        Reserva.propiedad_id == propiedad.id, Reserva.estado == "confirmada",
+        Reserva.propiedad_id == propiedad.id, Reserva.estado.in_(["pendiente", "confirmada"]),
         Reserva.fecha_inicio < payload.fecha_fin, Reserva.fecha_fin > payload.fecha_inicio,
     ).first()
     if solapada:
@@ -153,7 +155,7 @@ def cambiar_estado_reserva(reserva_id: int, payload: EstadoReservaUpdate, db: Se
     if payload.estado == "confirmada":
         conflicto = db.query(Reserva.id).filter(
             Reserva.propiedad_id == reserva.propiedad_id,
-            Reserva.estado == "confirmada",
+            Reserva.estado.in_(["pendiente", "confirmada"]),
             Reserva.id != reserva.id,
             Reserva.fecha_inicio < reserva.fecha_fin,
             Reserva.fecha_fin > reserva.fecha_inicio,

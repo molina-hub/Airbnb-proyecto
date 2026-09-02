@@ -7,6 +7,7 @@ class CreateUserDTO(BaseModel):
     email: EmailStr
     nombre: str
     es_anfitrion: bool = False
+    password: str
 
 
 class UpdateUserDTO(BaseModel):

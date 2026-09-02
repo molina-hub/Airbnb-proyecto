@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-label="Alojamiento sin imagen">
+  <rect width="800" height="500" fill="#f3f4f6"/>
+  <path d="M165 390V235l235-155 235 155v155h-95V280H260v110z" fill="#fb7185"/>
+  <path d="M330 390v-100h140v100M300 225h48v45h-48zm152 0h48v45h-48z" fill="#fff"/>
+  <text x="400" y="455" text-anchor="middle" font-family="Arial, sans-serif" font-size="28" fill="#4b5563">Alojamiento Airbnb</text>
+</svg>

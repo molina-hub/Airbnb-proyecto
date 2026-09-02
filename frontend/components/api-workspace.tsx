@@ -26,9 +26,12 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
   const [fechaFin, setFechaFin] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+  const [cargando, setCargando] = useState(true);
+  const [procesando, setProcesando] = useState(false);
 
   const cargar = useCallback(async () => {
     setError("");
+    setCargando(true);
     try {
       if (mode === "amenidades" || mode === "disponibilidad") {
         const [listaPropiedades, listaAmenidades] = await Promise.all([api<Propiedad[]>("/propiedades"), api<Amenidad[]>("/amenidades")]);
@@ -47,6 +50,7 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
       if (mode === "gestion") setReservas(await api<Reserva[]>(`/anfitriones/${hostId}/reservas`));
       if (mode === "top") setResultado(await api<unknown[]>("/propiedades/top"));
     } catch (cause) { setError(errorMessage(cause)); }
+    finally { setCargando(false); }
   }, [mode]);
 
   useEffect(() => {
@@ -56,7 +60,9 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
 
   const ejecutar = async (action: () => Promise<unknown>, ok: string) => {
     setError("");
+    setProcesando(true);
     try { setResultado(await action()); setMensaje(ok); await cargar(); } catch (cause) { setError(errorMessage(cause)); }
+    finally { setProcesando(false); }
   };
 
   const seleccionada = propiedades.find((p) => p.id === seleccion);
@@ -83,7 +89,7 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
   };
 
   const titulos: Record<Mode, string> = {amenidades: "Amenidades", disponibilidad: "Disponibilidad", ingresos: "Ingresos del anfitrión", resenas: "Reseñas", top: "Top propiedades", historial: "Mis reservas", gestion: "Gestionar reservas", favoritos: "Favoritos", reservar: "Reservar", mispropiedades: "Mis propiedades"};
-  return <main className="min-h-screen bg-gray-100 p-6"><section className="mx-auto max-w-4xl rounded-3xl bg-white p-8 shadow"><a href="/" className="text-2xl font-bold text-rose-500">Airbnb</a><h1 className="mt-6 text-3xl font-bold">{titulos[mode]}</h1><p className="mt-2 text-gray-600">Datos obtenidos directamente desde la API.</p>{error && <p className="mt-4 rounded bg-red-100 p-3 text-red-700">{error}</p>}{mensaje && <p className="mt-4 rounded bg-green-100 p-3 text-green-700">{mensaje}</p>}<div className="mt-6">{contenido()}</div></section></main>;
+  return <main className="min-h-screen bg-gray-100 p-6"><section className="mx-auto max-w-4xl rounded-3xl bg-white p-8 shadow"><a href="/" className="text-2xl font-bold text-rose-500">Airbnb</a><h1 className="mt-6 text-3xl font-bold">{titulos[mode]}</h1><p className="mt-2 text-gray-600">Datos obtenidos directamente desde la API.</p>{cargando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Cargando datos…</p>}{procesando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Procesando operación…</p>}{error && <p className="mt-4 rounded bg-red-100 p-3 text-red-700" role="alert">{error}</p>}{mensaje && <p className="mt-4 rounded bg-green-100 p-3 text-green-700">{mensaje}</p>}<fieldset className="mt-6 disabled:opacity-60" disabled={cargando || procesando}>{contenido()}</fieldset></section></main>;
 }
 
 function Listado({ datos }: { datos: unknown }) { return <pre className="mt-5 overflow-auto rounded bg-gray-100 p-4 text-sm">{JSON.stringify(datos, null, 2)}</pre>; }

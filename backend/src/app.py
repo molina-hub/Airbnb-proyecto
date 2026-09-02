@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
+from sqlalchemy.exc import OperationalError
 
 from src.middlewares.error_middleware import app_error_handler
 from src.routers import (
@@ -25,6 +27,14 @@ app.add_middleware(
 
 
 app.add_exception_handler(AppError, app_error_handler)
+
+
+@app.exception_handler(OperationalError)
+async def database_unavailable_handler(request, exc):
+    return JSONResponse(
+        status_code=503,
+        content={"detail": "La base de datos no está disponible. Verificá PostgreSQL y DATABASE_URL."},
+    )
 
 
 app.include_router(airbnb_router.router, prefix="/api")

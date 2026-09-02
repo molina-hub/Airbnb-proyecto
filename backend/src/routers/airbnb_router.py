@@ -75,12 +75,15 @@ def reserva_data(reserva: Reserva) -> dict:
         "huesped_id": reserva.huesped_id, "fecha_inicio": reserva.fecha_inicio,
         "fecha_fin": reserva.fecha_fin, "estado": reserva.estado, "total": reserva.total,
         "propiedad": {"id": propiedad.id, "titulo": propiedad.titulo, "ciudad": propiedad.ciudad},
+        "huesped": {"id": reserva.huesped.id, "nombre": reserva.huesped.nombre, "email": reserva.huesped.email},
         "anfitrion": {"id": propiedad.anfitrion.id, "nombre": propiedad.anfitrion.nombre},
     }
 
 
 @router.get("/anfitriones/{anfitrion_id}/propiedades")
-def propiedades_de_anfitrion(anfitrion_id: int, db: Session = Depends(get_db)):
+def propiedades_de_anfitrion(anfitrion_id: int, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    if usuario.id != anfitrion_id:
+        fail(403, "Solo podés consultar tus propias propiedades")
     anfitrion = db.get(Usuario, anfitrion_id)
     if not anfitrion:
         fail(404, "Anfitrión no encontrado")
@@ -147,7 +150,7 @@ def crear_reserva(payload: ReservaCreate, usuario: Usuario = Depends(get_current
     noches = (payload.fecha_fin - payload.fecha_inicio).days
     reserva = Reserva(**payload.model_dump(), estado="pendiente", total=propiedad.precio_noche * noches)
     db.add(reserva); db.commit(); db.refresh(reserva)
-    return reserva_data(db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion)).get(reserva.id))
+    return reserva_data(db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion), joinedload(Reserva.huesped)).get(reserva.id))
 
 
 @router.patch("/reservas/{reserva_id}/estado")
@@ -298,11 +301,13 @@ def ingresos(anfitrion_id: int, desde: date, hasta: date, db: Session = Depends(
 
 
 @router.get("/anfitriones/{anfitrion_id}/reservas")
-def reservas_de_anfitrion(anfitrion_id: int, estado: str | None = None, db: Session = Depends(get_db)):
+def reservas_de_anfitrion(anfitrion_id: int, estado: str | None = None, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    if usuario.id != anfitrion_id:
+        fail(403, "Solo podés consultar las reservas de tus propiedades")
     anfitrion = db.get(Usuario, anfitrion_id)
     if not anfitrion or not anfitrion.es_anfitrion:
         fail(404, "Anfitrión no encontrado")
-    query = db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion)).join(Propiedad).filter(Propiedad.anfitrion_id == anfitrion_id)
+    query = db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion), joinedload(Reserva.huesped)).join(Propiedad).filter(Propiedad.anfitrion_id == anfitrion_id)
     if estado:
         if estado not in ESTADOS: fail(422, "Estado inválido")
         query = query.filter(Reserva.estado == estado)
@@ -321,7 +326,7 @@ def propiedades_top(ciudad: str | None = None, db: Session = Depends(get_db)):
 def reservas_de_usuario(usuario_id: int, estado: str | None = None, db: Session = Depends(get_db)):
     if estado and estado not in ESTADOS: fail(422, "Estado inválido")
     if not db.get(Usuario, usuario_id): fail(404, "Usuario no encontrado")
-    query = db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion)).filter(Reserva.huesped_id == usuario_id)
+    query = db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion), joinedload(Reserva.huesped)).filter(Reserva.huesped_id == usuario_id)
     if estado: query = query.filter(Reserva.estado == estado)
     return [reserva_data(r) for r in query.order_by(Reserva.fecha_inicio.desc()).all()]
 

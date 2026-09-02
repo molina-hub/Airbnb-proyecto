@@ -45,16 +45,19 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
         setPropiedades(listaPropiedades); setSeleccion((actual) => actual || listaPropiedades[0]?.id || 0);
       }
       if (mode === "favoritos") {
-        const [listaPropiedades, listaFavoritos] = await Promise.all([api<Propiedad[]>("/propiedades"), api<Propiedad[]>(`/usuarios/${userId}/favoritos`)]);
-        setPropiedades(listaPropiedades); setFavoritos(listaFavoritos);
+        setFavoritos(await api<Propiedad[]>("/favoritos"));
       }
       if (mode === "mispropiedades") setPropiedades(await api<Propiedad[]>(`/anfitriones/${hostId}/propiedades`));
-      if (mode === "resenas" || mode === "historial") setReservas(await api<Reserva[]>(`/usuarios/${userId}/reservas`));
+      if (mode === "resenas" || mode === "historial") setReservas(await api<Reserva[]>("/reservas"));
       if (mode === "gestion") setReservas(await api<Reserva[]>(`/anfitriones/${hostId}/reservas`));
       if (mode === "top") setResultado(await api<unknown[]>("/propiedades/top"));
-    } catch (cause) { setError(errorMessage(cause)); }
+    } catch (cause) {
+      setError(errorMessage(cause));
+      if (mode === "favoritos") { setFavoritos([]); setPropiedades([]); }
+      if (mode === "historial" || mode === "resenas" || mode === "gestion") setReservas([]);
+    }
     finally { setCargando(false); }
-  }, [mode, usuario, userId, hostId]);
+  }, [mode, usuario, hostId]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => { void cargar(); }, 0);
@@ -84,7 +87,7 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
     if (mode === "ingresos") return <><input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} /><input className="ml-3" type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} /><button className="ml-3 rounded bg-rose-500 px-4 py-2 text-white" onClick={() => void ejecutar(() => api(`/anfitriones/${hostId}/ingresos?desde=${desde}&hasta=${hasta}`), "Ingresos consultados.")}>Consultar</button>{resultado && <pre>{JSON.stringify(resultado, null, 2)}</pre>}</>;
     if (mode === "top") return <><input value={ciudad} placeholder="Ciudad (opcional)" onChange={(e) => setCiudad(e.target.value)} /><button className="ml-3 rounded bg-rose-500 px-4 py-2 text-white" onClick={() => void ejecutar(() => api(`/propiedades/top${ciudad ? `?ciudad=${encodeURIComponent(ciudad)}` : ""}`), "Ranking actualizado.")}>Buscar</button><Listado datos={resultado} /></>;
     if (mode === "reservar") return <><select value={seleccion} onChange={(e) => setSeleccion(Number(e.target.value))}>{propiedades.map((p) => <option key={p.id} value={p.id}>{p.titulo} — ${p.precio_noche}/noche</option>)}</select><input className="ml-3" type="date" value={fechaInicio} onChange={(e) => setFechaInicio(e.target.value)} /><input className="ml-3" type="date" value={fechaFin} onChange={(e) => setFechaFin(e.target.value)} /><button className="ml-3 rounded bg-rose-500 px-4 py-2 text-white" onClick={() => void ejecutar(() => api("/reservas", {method: "POST", body: JSON.stringify({propiedad_id: seleccion, huesped_id: userId, fecha_inicio: fechaInicio, fecha_fin: fechaFin})}), "Reserva creada en estado pendiente.")}>Reservar</button></>;
-    if (mode === "favoritos") return <div className="space-y-3">{propiedades.map((p) => { const esFavorito = favoritos.some((f) => f.id === p.id); return <article key={p.id} className="rounded border p-4"><strong>{p.titulo}</strong> — {p.ciudad}<button className="ml-3 rounded bg-rose-500 px-3 py-1 text-white" onClick={() => void ejecutar(() => api(`/usuarios/${userId}/favoritos/${p.id}`, {method: esFavorito ? "DELETE" : "POST"}), esFavorito ? "Favorito eliminado." : "Favorito agregado.")}>{esFavorito ? "Quitar" : "Agregar"}</button></article>; })}</div>;
+    if (mode === "favoritos") return <div className="space-y-3">{favoritos.length === 0 ? <p className="rounded-xl bg-slate-100 p-4 text-slate-700">Todavía no tenés propiedades favoritas.</p> : favoritos.map((p) => <article key={p.id} className="rounded border p-4"><strong>{p.titulo}</strong> — {p.ciudad}<button className="ml-3 rounded bg-rose-500 px-3 py-1 text-white" onClick={() => void ejecutar(() => api(`/usuarios/${userId}/favoritos/${p.id}`, {method: "DELETE"}), "Favorito eliminado.")}>Quitar</button></article>)}</div>;
     if (mode === "mispropiedades") return <div className="space-y-3">{propiedades.map((p) => <article key={p.id} className="rounded border p-4"><strong>{p.titulo}</strong> — {p.ciudad} — ${p.precio_noche}<button className="ml-3 rounded bg-red-600 px-3 py-1 text-white" onClick={() => void ejecutar(() => api(`/propiedades/${p.id}`, {method: "DELETE"}), "Propiedad eliminada.")}>Eliminar</button></article>)}{propiedades.length === 0 && <p>No hay propiedades publicadas.</p>}</div>;
     if (mode === "historial") return <Reservas reservas={reservas} />;
     if (mode === "gestion") return <Reservas reservas={reservas} accion={(reserva, estado) => void ejecutar(() => api(`/reservas/${reserva.id}/estado`, {method: "PATCH", body: JSON.stringify({estado, anfitrion_id: hostId})}), `Reserva ${estado}.`)} />;
@@ -94,7 +97,7 @@ export default function ApiWorkspace({ mode }: { mode: Mode }) {
   const titulos: Record<Mode, string> = {amenidades: "Amenidades", disponibilidad: "Disponibilidad", ingresos: "Ingresos del anfitrión", resenas: "Reseñas", top: "Top propiedades", historial: "Mis reservas", gestion: "Gestionar reservas", favoritos: "Favoritos", reservar: "Reservar", mispropiedades: "Mis propiedades"};
   if (!listo) return <main className="min-h-screen bg-slate-50"><Navbar/><p className="p-8">Cargando sesión…</p></main>;
   if (!usuario) return <main className="min-h-screen bg-slate-50"><Navbar/><section className="mx-auto max-w-xl p-10"><h1 className="text-3xl font-bold">Necesitás iniciar sesión</h1><p className="mt-3 text-slate-700">Esta sección usa tu perfil para mostrar y gestionar tus datos.</p><a className="mt-5 inline-block rounded-xl bg-rose-600 px-5 py-3 font-bold text-white" href="/registro">Iniciar sesión</a></section></main>;
-  return <main className="min-h-screen bg-slate-50"><Navbar/><section className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50"><h1 className="text-3xl font-bold text-slate-950">{titulos[mode]}</h1><p className="mt-2 text-slate-700">Datos obtenidos directamente desde la API.</p>{cargando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Cargando datos…</p>}{procesando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Procesando operación…</p>}{error && <p className="mt-4 rounded bg-red-100 p-3 text-red-700" role="alert">{error}</p>}{mensaje && <p className="mt-4 rounded bg-green-100 p-3 text-green-700">{mensaje}</p>}<fieldset className="mt-6 disabled:opacity-60" disabled={cargando || procesando}>{contenido()}</fieldset></section></main>;
+  return <main className="min-h-screen bg-slate-50"><Navbar/><section className="mx-auto max-w-4xl rounded-3xl border border-slate-200 bg-white p-8 shadow-xl shadow-slate-200/50"><h1 className="text-3xl font-bold text-slate-950">{titulos[mode]}</h1><p className="mt-2 text-slate-700">Datos obtenidos directamente desde la API.</p>{cargando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Cargando datos…</p>}{procesando && <p className="mt-4 rounded bg-blue-50 p-3 text-blue-800" role="status">Procesando operación…</p>}{error && <p className="mt-4 rounded bg-amber-50 p-3 text-amber-900" role="alert">{error} Podés reintentar cuando el servicio esté disponible.</p>}{mensaje && <p className="mt-4 rounded bg-green-100 p-3 text-green-700">{mensaje}</p>}<fieldset className="mt-6 disabled:opacity-60" disabled={cargando || procesando}>{contenido()}</fieldset></section></main>;
 }
 
 function Listado({ datos }: { datos: unknown }) { return <pre className="mt-5 overflow-auto rounded bg-gray-100 p-4 text-sm">{JSON.stringify(datos, null, 2)}</pre>; }

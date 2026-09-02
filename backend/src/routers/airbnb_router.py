@@ -16,6 +16,7 @@ from src.db.models.propiedad_model import Propiedad
 from src.db.models.resena_model import Resena
 from src.db.models.reserva_model import Reserva
 from src.db.models.usuario_model import Usuario
+from src.middlewares.auth_middleware import get_current_user
 
 router = APIRouter(tags=["airbnb"])
 ESTADOS = {"pendiente", "confirmada", "rechazada", "cancelada"}
@@ -201,6 +202,11 @@ def listar_favoritos(usuario_id: int, db: Session = Depends(get_db)):
     return [propiedad_data(p) for p in propiedades]
 
 
+@router.get("/favoritos")
+def mis_favoritos(usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    return listar_favoritos(usuario.id, db)
+
+
 @router.post("/usuarios/{usuario_id}/favoritos/{propiedad_id}", status_code=status.HTTP_201_CREATED)
 def agregar_favorito(usuario_id: int, propiedad_id: int, db: Session = Depends(get_db)):
     if not db.get(Usuario, usuario_id) or not db.get(Propiedad, propiedad_id): fail(404, "Usuario o propiedad no encontrado")
@@ -296,3 +302,8 @@ def reservas_de_usuario(usuario_id: int, estado: str | None = None, db: Session 
     query = db.query(Reserva).options(joinedload(Reserva.propiedad).joinedload(Propiedad.anfitrion)).filter(Reserva.huesped_id == usuario_id)
     if estado: query = query.filter(Reserva.estado == estado)
     return [reserva_data(r) for r in query.order_by(Reserva.fecha_inicio.desc()).all()]
+
+
+@router.get("/reservas")
+def mis_reservas(estado: str | None = None, usuario: Usuario = Depends(get_current_user), db: Session = Depends(get_db)):
+    return reservas_de_usuario(usuario.id, estado, db)

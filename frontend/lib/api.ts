@@ -1,4 +1,5 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api";
+const configuredUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const API_URL = `${configuredUrl.replace(/\/$/, "").replace(/\/api$/, "")}/api`;
 const REQUEST_TIMEOUT_MS = 10_000;
 
 export class ApiError extends Error {
@@ -28,6 +29,9 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
     if (cause instanceof DOMException && cause.name === "AbortError") {
       throw new ApiError("La API no respondió en 10 segundos. Verificá que el backend y PostgreSQL estén activos.", 408);
     }
+    if (cause instanceof TypeError) {
+      throw new ApiError("No se pudo conectar con la API. Verificá que el backend esté ejecutándose en http://127.0.0.1:8000.", 0);
+    }
     throw cause;
   } finally {
     window.clearTimeout(timeout);
@@ -36,5 +40,7 @@ export async function api<T>(path: string, options: RequestInit = {}): Promise<T
 }
 
 export function errorMessage(error: unknown): string {
+  if (error instanceof ApiError) return error.message;
+  if (error instanceof TypeError) return "No se pudo conectar con la API. Intentá nuevamente en unos instantes.";
   return error instanceof Error ? error.message : "Ocurrió un error inesperado.";
 }

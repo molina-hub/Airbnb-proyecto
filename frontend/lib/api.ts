@@ -8,6 +8,10 @@ export class ApiError extends Error {
   }
 }
 
+export function hasSessionToken(): boolean {
+  return typeof window !== "undefined" && Boolean(localStorage.getItem("airbnb_token"));
+}
+
 function mensajeAmigable(message: unknown, status?: number): string {
   const texto = typeof message === "string" ? message : "";
   const normalizado = texto.toLowerCase();

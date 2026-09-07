@@ -12,6 +12,7 @@ type Propiedad = {
   ciudad: string;
   precio_noche: number;
   capacidad: number;
+  anfitrion_id: number;
   imagen_url?: string | null;
   reservas: {
     fecha_inicio: string;
@@ -319,6 +320,10 @@ export default function BuscarPage() {
 
                       <p className="text-gray-600">
                         {propiedad.ciudad}
+                      </p>
+
+                      <p className="text-sm font-medium text-slate-800">
+                        Anfitrión · ID #{propiedad.anfitrion_id}
                       </p>
 
                       <div className="mt-4 flex flex-wrap gap-2">

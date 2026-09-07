@@ -1,7 +1,6 @@
 """Endpoints del dominio Airbnb que no pertenecen al CRUD básico."""
 
-from calendar import monthrange
-from datetime import date, datetime
+from datetime import date
 from decimal import Decimal
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -17,6 +16,8 @@ from src.db.models.resena_model import Resena
 from src.db.models.reserva_model import Reserva
 from src.db.models.usuario_model import Usuario
 from src.middlewares.auth_middleware import get_current_user
+from src.schemas.reportes_schema import DisponibilidadSchema, IngresosAnfitrionSchema, PropiedadTopSchema
+from src.services.reportes_service import ReportesService
 
 router = APIRouter(tags=["airbnb"])
 ESTADOS = {"pendiente", "confirmada", "rechazada", "cancelada"}
@@ -288,33 +289,25 @@ def asignar_amenidades(propiedad_id: int, payload: PropiedadAmenidadesUpdate, db
 
 
 @router.get("/propiedades/{propiedad_id}/disponibilidad")
-def disponibilidad(propiedad_id: int, mes: str, db: Session = Depends(get_db)):
-    try: inicio = datetime.strptime(mes, "%Y-%m").date().replace(day=1)
-    except ValueError: fail(422, "mes debe tener formato YYYY-MM")
-    if not db.get(Propiedad, propiedad_id): fail(404, "Propiedad no encontrada")
-    fin = inicio.replace(day=monthrange(inicio.year, inicio.month)[1])
-    ocupadas = set()
-    reservas = db.query(Reserva).filter(Reserva.propiedad_id == propiedad_id, Reserva.estado == "confirmada", Reserva.fecha_inicio <= fin, Reserva.fecha_fin > inicio).all()
-    for reserva in reservas:
-        cursor = max(reserva.fecha_inicio, inicio)
-        limite = min(reserva.fecha_fin, date.fromordinal(fin.toordinal() + 1))
-        while cursor < limite:
-            ocupadas.add(cursor); cursor = date.fromordinal(cursor.toordinal() + 1)
-    dias = [{"fecha": date.fromordinal(inicio.toordinal() + offset), "estado": "ocupado" if date.fromordinal(inicio.toordinal() + offset) in ocupadas else "libre"} for offset in range((fin - inicio).days + 1)]
-    return {"propiedad_id": propiedad_id, "mes": mes, "dias": dias}
+def disponibilidad(propiedad_id: int, mes: str, db: Session = Depends(get_db)) -> DisponibilidadSchema:
+    try:
+        resultado = ReportesService(db).disponibilidad(propiedad_id, mes)
+        return DisponibilidadSchema.model_validate(resultado.model_dump())
+    except ValueError as error:
+        fail(422, str(error))
+    except LookupError as error:
+        fail(404, str(error))
 
 
 @router.get("/anfitriones/{anfitrion_id}/ingresos")
-def ingresos(anfitrion_id: int, desde: date, hasta: date, db: Session = Depends(get_db)):
-    if desde > hasta: fail(422, "'desde' no puede ser posterior a 'hasta'")
-    anfitrion = db.get(Usuario, anfitrion_id)
-    if not anfitrion or not anfitrion.es_anfitrion: fail(404, "Anfitrión no encontrado")
-    reservas = db.query(Reserva).join(Propiedad).filter(Propiedad.anfitrion_id == anfitrion_id, Reserva.estado == "confirmada", Reserva.fecha_fin >= desde, Reserva.fecha_fin <= hasta).all()
-    detalle = {}
-    for r in reservas:
-        item = detalle.setdefault(r.propiedad_id, {"propiedad_id": r.propiedad_id, "titulo": r.propiedad.titulo, "total_facturado": Decimal("0.00"), "cantidad_reservas": 0})
-        item["total_facturado"] += r.total; item["cantidad_reservas"] += 1
-    return {"anfitrion_id": anfitrion_id, "desde": desde, "hasta": hasta, "total_facturado": sum((r.total for r in reservas), Decimal("0.00")), "detalle": list(detalle.values())}
+def ingresos(anfitrion_id: int, desde: date, hasta: date, db: Session = Depends(get_db)) -> IngresosAnfitrionSchema:
+    try:
+        resultado = ReportesService(db).ingresos(anfitrion_id, desde, hasta)
+        return IngresosAnfitrionSchema.model_validate(resultado.model_dump())
+    except ValueError as error:
+        fail(422, str(error))
+    except LookupError as error:
+        fail(404, str(error))
 
 
 @router.get("/anfitriones/{anfitrion_id}/reservas")
@@ -332,11 +325,11 @@ def reservas_de_anfitrion(anfitrion_id: int, estado: str | None = None, usuario:
 
 
 @router.get("/propiedades/top")
-def propiedades_top(ciudad: str | None = None, db: Session = Depends(get_db)):
-    query = db.query(Propiedad, func.avg(Resena.puntaje).label("promedio"), func.count(Resena.id).label("cantidad_resenas")).join(Reserva, Reserva.propiedad_id == Propiedad.id).join(Resena, Resena.reserva_id == Reserva.id).group_by(Propiedad.id).having(func.count(Resena.id) >= 3)
-    if ciudad: query = query.filter(func.lower(Propiedad.ciudad) == ciudad.strip().lower())
-    filas = query.order_by(func.avg(Resena.puntaje).desc(), func.count(Resena.id).desc()).limit(10).all()
-    return [{"id": p.id, "titulo": p.titulo, "ciudad": p.ciudad, "precio_noche": p.precio_noche, "promedio": promedio, "cantidad_resenas": cantidad} for p, promedio, cantidad in filas]
+def propiedades_top(ciudad: str = Query(min_length=1), db: Session = Depends(get_db)) -> list[PropiedadTopSchema]:
+    try:
+        return [PropiedadTopSchema.model_validate(item.model_dump()) for item in ReportesService(db).top_propiedades(ciudad)]
+    except ValueError as error:
+        fail(422, str(error))
 
 
 @router.get("/usuarios/{usuario_id}/reservas")

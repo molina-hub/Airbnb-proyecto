@@ -5,7 +5,7 @@ from src.config.env import settings
 
 # psycopg 3 es el driver soportado por las versiones recientes de Python.
 # Conserva compatibilidad con el formato PostgreSQL habitual del archivo .env.
-database_url = settings.DATABASE_URL
+database_url = settings.database_url
 if database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+psycopg://", 1)
 

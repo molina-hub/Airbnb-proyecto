@@ -18,6 +18,7 @@ from src.db.models.usuario_model import Usuario
 from src.middlewares.auth_middleware import get_current_user
 from src.schemas.reportes_schema import DisponibilidadSchema, IngresosAnfitrionSchema, PropiedadTopSchema
 from src.services.reportes_service import ReportesService
+from src.services.resena_service import ResenaService
 
 router = APIRouter(tags=["airbnb"])
 ESTADOS = {"pendiente", "confirmada", "rechazada", "cancelada"}
@@ -190,21 +191,16 @@ def cambiar_estado_reserva(reserva_id: int, payload: EstadoReservaUpdate, usuari
 
 
 def guardar_resena(propiedad_id: int, payload: ResenaCreate, usuario: Usuario, db: Session) -> dict:
-    reserva = db.get(Reserva, payload.reserva_id)
-    if not reserva or reserva.propiedad_id != propiedad_id:
-        fail(404, "Reserva no encontrada para la propiedad")
     if payload.autor_id is not None and payload.autor_id != usuario.id:
         fail(403, "No podés crear reseñas en nombre de otra persona")
-    if reserva.huesped_id != usuario.id:
-        fail(403, "Solo el huésped de la reserva puede reseñar")
-    # Una reserva confirmada puede reseñarse durante desarrollo aun si su fecha
-    # de salida todavía no llegó; las reservas ya terminadas también califican.
-    if reserva.estado not in {"confirmada", "finalizada"} and reserva.fecha_fin > date.today():
-        fail(409, "Solo se puede reseñar una estancia confirmada o finalizada")
-    if db.query(Resena.id).filter_by(reserva_id=reserva.id).first():
-        fail(409, "Ya existe una reseña para esta reserva")
-    resena = Resena(reserva_id=reserva.id, autor_id=usuario.id, puntaje=payload.puntaje, comentario=payload.comentario)
-    db.add(resena); db.commit(); db.refresh(resena)
+    try:
+        resena = ResenaService(db).crear(propiedad_id, payload.reserva_id, usuario.id, payload.puntaje, payload.comentario)
+    except LookupError as error:
+        fail(404, str(error))
+    except PermissionError as error:
+        fail(403, str(error))
+    except ValueError as error:
+        fail(400, str(error))
     return {"id": resena.id, "reserva_id": resena.reserva_id, "autor_id": resena.autor_id, "puntaje": resena.puntaje, "comentario": resena.comentario, "fecha": resena.fecha}
 
 
